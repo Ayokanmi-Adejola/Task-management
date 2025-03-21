@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { TaskStatus } from '@/types/kanban';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from './ui/badge';
+import { cn } from '@/lib/utils';
 
 interface CreateTaskDialogProps {
   status: TaskStatus;
