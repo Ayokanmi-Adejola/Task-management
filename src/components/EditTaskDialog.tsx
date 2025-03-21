@@ -72,7 +72,9 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
 
   const handleDelete = () => {
     if (task) {
+      // Close the dialog 
       onOpenChange(false);
+      // We'll handle the actual deletion in the KanbanBoard component
       toast.success('Task deleted successfully');
     }
   };

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Camera, User } from 'lucide-react';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -30,8 +32,9 @@ const DEFAULT_SETTINGS: UserSettings = {
 };
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserAvatar } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("account");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [settings, setSettings] = useState<UserSettings>(() => {
     const savedSettings = localStorage.getItem('userSettings');
@@ -50,6 +53,39 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
     // In a real app, this would make an API call to update the user profile
     toast.success('Profile updated successfully');
   };
+
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Check file size (limit to 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size should be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      if (imageUrl) {
+        updateUserAvatar(imageUrl);
+        toast.success('Profile picture updated successfully');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,6 +102,30 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
             </TabsList>
             
             <TabsContent value="account" className="pt-4 space-y-4">
+              <div className="flex items-center justify-center">
+                <div className="relative cursor-pointer group" onClick={handleAvatarClick}>
+                  <Avatar className="w-24 h-24 border-2 border-primary">
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback className="text-lg">
+                      <User className="h-8 w-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Camera className="h-8 w-8 text-white" />
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleAvatarChange}
+                  />
+                </div>
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Click to change profile picture
+              </p>
+              
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input

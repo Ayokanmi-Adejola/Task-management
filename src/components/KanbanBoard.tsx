@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Task, Column, TaskStatus } from '@/types/kanban';
-import { getTasksFromLocalStorage, saveTasksToLocalStorage } from '@/utils/localStorage';
+import { getTasksFromLocalStorage, saveTasksToLocalStorage, clearDemoTasks } from '@/utils/localStorage';
 import { v4 as uuidv4 } from 'uuid';
 import TaskCard from './TaskCard';
 import ColumnHeader from './ColumnHeader';
@@ -10,7 +9,7 @@ import EditTaskDialog from './EditTaskDialog';
 import FilterTasksDialog, { TaskFilters } from './FilterTasksDialog';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Filter, Plus } from 'lucide-react';
+import { Filter, Plus, Trash } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const COLUMNS: Column[] = [
@@ -126,8 +125,8 @@ const KanbanBoard: React.FC = () => {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const { user, isAuthenticated } = useAuth();
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-  // Get all unique tags from tasks
   const getAvailableTags = () => {
     const allTags = tasks
       .flatMap(task => task.tags || [])
@@ -135,7 +134,6 @@ const KanbanBoard: React.FC = () => {
     return allTags;
   };
 
-  // Get all unique assignees from tasks
   const getAvailableAssignees = () => {
     const allAssignees = tasks
       .flatMap(task => task.assignees || [])
@@ -144,14 +142,20 @@ const KanbanBoard: React.FC = () => {
   };
 
   useEffect(() => {
-    let savedTasks = getTasksFromLocalStorage(user?.id);
-    if (savedTasks.length === 0) {
-      // If no tasks found, use demo tasks
-      savedTasks = DEMO_TASKS;
-      saveTasksToLocalStorage(savedTasks, user?.id);
+    if (user?.id) {
+      let savedTasks = getTasksFromLocalStorage(user.id);
+      
+      if (savedTasks.length === 0 && isFirstLoad) {
+        savedTasks = DEMO_TASKS;
+        saveTasksToLocalStorage(savedTasks, user.id);
+        setIsFirstLoad(false);
+      }
+      
+      setTasks(savedTasks);
+    } else {
+      setTasks(DEMO_TASKS);
     }
-    setTasks(savedTasks);
-  }, [user]);
+  }, [user, isFirstLoad]);
 
   useEffect(() => {
     if (user?.id) {
@@ -159,30 +163,25 @@ const KanbanBoard: React.FC = () => {
     }
   }, [tasks, user]);
 
-  // Apply filters and search
   useEffect(() => {
     let result = [...tasks];
 
-    // Apply tag filters
     if (filters.tags.length > 0) {
       result = result.filter(task => 
         task.tags && task.tags.some(tag => filters.tags.includes(tag))
       );
     }
 
-    // Apply assignee filters
     if (filters.assignees.length > 0) {
       result = result.filter(task => 
         task.assignees && task.assignees.some(assignee => filters.assignees.includes(assignee))
       );
     }
 
-    // Apply completed filter
     if (!filters.showCompleted) {
       result = result.filter(task => task.status !== 'done');
     }
 
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(task => 
@@ -221,6 +220,17 @@ const KanbanBoard: React.FC = () => {
   const handleDeleteTask = (id: string) => {
     setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
     toast.success('Task deleted successfully');
+  };
+
+  const handleClearAllTasks = () => {
+    if (!user) {
+      toast.error('Please log in to manage tasks');
+      return;
+    }
+    
+    setTasks([]);
+    clearDemoTasks(user.id);
+    toast.success('All tasks cleared successfully');
   };
 
   const handleDragStart = (taskId: string) => {
@@ -273,7 +283,6 @@ const KanbanBoard: React.FC = () => {
 
   const handleApplyFilters = (newFilters: TaskFilters) => {
     setFilters(newFilters);
-    // Add a confirmation toast
     toast.success('Filters applied successfully');
   };
 
@@ -289,6 +298,16 @@ const KanbanBoard: React.FC = () => {
           <p className="text-muted-foreground text-sm">View and manage your tasks</p>
         </div>
         <div className="flex gap-3">
+          {isAuthenticated && (
+            <Button 
+              variant="outline" 
+              className="gap-2 text-destructive hover:bg-destructive/10"
+              onClick={handleClearAllTasks}
+            >
+              <Trash className="h-4 w-4" />
+              Clear All Tasks
+            </Button>
+          )}
           <Button 
             variant="outline" 
             className="gap-2"

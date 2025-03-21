@@ -15,6 +15,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUserAvatar: (avatarUrl: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +43,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     setIsAuthenticated(true);
+  };
+
+  const updateUserAvatar = (avatarUrl: string) => {
+    if (!user) return;
+    
+    // Update the user in the current session
+    const updatedUser = { ...user, avatar: avatarUrl };
+    saveUser(updatedUser);
+    
+    // Update the user in the stored users
+    const users = getUsers();
+    if (users[user.email]) {
+      users[user.email].avatar = avatarUrl;
+      localStorage.setItem('users', JSON.stringify(users));
+    }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -98,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated, updateUserAvatar }}>
       {children}
     </AuthContext.Provider>
   );

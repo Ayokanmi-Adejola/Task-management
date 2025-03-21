@@ -31,3 +31,12 @@ export const saveTasksToLocalStorage = (tasks: Task[], userId?: string): void =>
     console.error('Error saving tasks to localStorage:', error);
   }
 };
+
+// Clear the demo tasks for a user
+export const clearDemoTasks = (userId: string): void => {
+  try {
+    localStorage.setItem(`tasks_${userId}`, JSON.stringify([]));
+  } catch (error) {
+    console.error('Error clearing demo tasks:', error);
+  }
+};
