@@ -1,30 +1,33 @@
 
-import { Task } from "../types/kanban";
+import { Task } from '@/types/kanban';
 
-const STORAGE_KEY = 'kanban_tasks';
-
-export const saveTasksToLocalStorage = (tasks: Task[]): void => {
+// Get tasks for a specific user
+export const getTasksFromLocalStorage = (userId?: string): Task[] => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    if (userId) {
+      const tasksJson = localStorage.getItem(`tasks_${userId}`);
+      return tasksJson ? JSON.parse(tasksJson) : [];
+    } else {
+      // Fallback to the general tasks store for non-authenticated users
+      const tasksJson = localStorage.getItem('tasks');
+      return tasksJson ? JSON.parse(tasksJson) : [];
+    }
   } catch (error) {
-    console.error('Error saving tasks to localStorage:', error);
-  }
-};
-
-export const getTasksFromLocalStorage = (): Task[] => {
-  try {
-    const tasks = localStorage.getItem(STORAGE_KEY);
-    return tasks ? JSON.parse(tasks) : [];
-  } catch (error) {
-    console.error('Error getting tasks from localStorage:', error);
+    console.error('Error fetching tasks from localStorage:', error);
     return [];
   }
 };
 
-export const clearTasksFromLocalStorage = (): void => {
+// Save tasks for a specific user
+export const saveTasksToLocalStorage = (tasks: Task[], userId?: string): void => {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    if (userId) {
+      localStorage.setItem(`tasks_${userId}`, JSON.stringify(tasks));
+    } else {
+      // Fallback to the general tasks store for non-authenticated users
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
   } catch (error) {
-    console.error('Error clearing tasks from localStorage:', error);
+    console.error('Error saving tasks to localStorage:', error);
   }
 };

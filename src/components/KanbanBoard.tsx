@@ -7,9 +7,11 @@ import TaskCard from './TaskCard';
 import ColumnHeader from './ColumnHeader';
 import CreateTaskDialog from './CreateTaskDialog';
 import EditTaskDialog from './EditTaskDialog';
+import FilterTasksDialog, { TaskFilters } from './FilterTasksDialog';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Filter, Plus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COLUMNS: Column[] = [
   { id: 'todo', title: 'To Do', color: 'bg-gray-400' },
@@ -109,26 +111,88 @@ const DEMO_TASKS: Task[] = [
 
 const KanbanBoard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [draggingOver, setDraggingOver] = useState<TaskStatus | null>(null);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [createInColumn, setCreateInColumn] = useState<TaskStatus>('todo');
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [filters, setFilters] = useState<TaskFilters>({
+    tags: [],
+    assignees: [],
+    showCompleted: true
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const { user, isAuthenticated } = useAuth();
+
+  // Get all unique tags from tasks
+  const getAvailableTags = () => {
+    const allTags = tasks
+      .flatMap(task => task.tags || [])
+      .filter((tag, index, self) => self.indexOf(tag) === index);
+    return allTags;
+  };
+
+  // Get all unique assignees from tasks
+  const getAvailableAssignees = () => {
+    const allAssignees = tasks
+      .flatMap(task => task.assignees || [])
+      .filter((assignee, index, self) => self.indexOf(assignee) === index);
+    return allAssignees;
+  };
 
   useEffect(() => {
-    let savedTasks = getTasksFromLocalStorage();
+    let savedTasks = getTasksFromLocalStorage(user?.id);
     if (savedTasks.length === 0) {
       // If no tasks found, use demo tasks
       savedTasks = DEMO_TASKS;
-      saveTasksToLocalStorage(savedTasks);
+      saveTasksToLocalStorage(savedTasks, user?.id);
     }
     setTasks(savedTasks);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    saveTasksToLocalStorage(tasks);
-  }, [tasks]);
+    if (user?.id) {
+      saveTasksToLocalStorage(tasks, user.id);
+    }
+  }, [tasks, user]);
+
+  // Apply filters and search
+  useEffect(() => {
+    let result = [...tasks];
+
+    // Apply tag filters
+    if (filters.tags.length > 0) {
+      result = result.filter(task => 
+        task.tags && task.tags.some(tag => filters.tags.includes(tag))
+      );
+    }
+
+    // Apply assignee filters
+    if (filters.assignees.length > 0) {
+      result = result.filter(task => 
+        task.assignees && task.assignees.some(assignee => filters.assignees.includes(assignee))
+      );
+    }
+
+    // Apply completed filter
+    if (!filters.showCompleted) {
+      result = result.filter(task => task.status !== 'done');
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(task => 
+        task.title.toLowerCase().includes(query) || 
+        task.description.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredTasks(result);
+  }, [tasks, filters, searchQuery]);
 
   const handleCreateTask = (title: string, description: string, status: TaskStatus, tags?: string[]) => {
     const newTask: Task = {
@@ -137,10 +201,12 @@ const KanbanBoard: React.FC = () => {
       description,
       status,
       createdAt: Date.now(),
-      tags
+      tags,
+      assignees: user ? [user.id] : undefined
     };
 
     setTasks((prevTasks) => [...prevTasks, newTask]);
+    toast.success('Task created successfully');
   };
 
   const handleUpdateTask = (updatedTask: Task) => {
@@ -149,6 +215,7 @@ const KanbanBoard: React.FC = () => {
         task.id === updatedTask.id ? updatedTask : task
       )
     );
+    toast.success('Task updated successfully');
   };
 
   const handleDeleteTask = (id: string) => {
@@ -192,12 +259,26 @@ const KanbanBoard: React.FC = () => {
   };
 
   const getColumnTasks = (status: TaskStatus) => {
-    return tasks.filter((task) => task.status === status);
+    return filteredTasks.filter((task) => task.status === status);
   };
 
   const openCreateTaskDialog = (status: TaskStatus) => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to create tasks');
+      return;
+    }
     setCreateInColumn(status);
     setCreateTaskOpen(true);
+  };
+
+  const handleApplyFilters = (newFilters: TaskFilters) => {
+    setFilters(newFilters);
+    // Add a confirmation toast
+    toast.success('Filters applied successfully');
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
 
   return (
@@ -208,12 +289,20 @@ const KanbanBoard: React.FC = () => {
           <p className="text-muted-foreground text-sm">View and manage your tasks</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => setFilterDialogOpen(true)}
+          >
             <Filter className="h-4 w-4" />
             Filter Tasks
           </Button>
           <Button 
             onClick={() => {
+              if (!isAuthenticated) {
+                toast.error('Please log in to create tasks');
+                return;
+              }
               setCreateInColumn('todo');
               setCreateTaskOpen(true);
             }}
@@ -263,10 +352,20 @@ const KanbanBoard: React.FC = () => {
                       task={task}
                       dragging={draggedTask === task.id}
                       onEdit={(task) => {
+                        if (!isAuthenticated) {
+                          toast.error('Please log in to edit tasks');
+                          return;
+                        }
                         setEditingTask(task);
                         setEditDialogOpen(true);
                       }}
-                      onDelete={handleDeleteTask}
+                      onDelete={(id) => {
+                        if (!isAuthenticated) {
+                          toast.error('Please log in to delete tasks');
+                          return;
+                        }
+                        handleDeleteTask(id);
+                      }}
                     />
                   </div>
                 ))}
@@ -307,6 +406,15 @@ const KanbanBoard: React.FC = () => {
         open={createTaskOpen}
         onOpenChange={setCreateTaskOpen}
         onCreate={handleCreateTask}
+      />
+
+      <FilterTasksDialog
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={filters}
+        availableTags={getAvailableTags()}
+        availableAssignees={getAvailableAssignees()}
       />
     </div>
   );
