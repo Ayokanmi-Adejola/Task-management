@@ -20,3 +20,11 @@ export const getTasksFromLocalStorage = (): Task[] => {
     return [];
   }
 };
+
+export const clearTasksFromLocalStorage = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error('Error clearing tasks from localStorage:', error);
+  }
+};

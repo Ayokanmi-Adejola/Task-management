@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, TaskStatus } from '@/types/kanban';
 import { toast } from 'sonner';
+import { Badge } from './ui/badge';
+import { cn } from '@/lib/utils';
 
 interface EditTaskDialogProps {
   task: Task | null;
@@ -15,6 +17,8 @@ interface EditTaskDialogProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (task: Task) => void;
 }
+
+const TAGS = ["Design", "UI/UX", "Dev", "Testing"];
 
 const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ 
   task, 
@@ -25,12 +29,14 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (task) {
       setTitle(task.title);
       setDescription(task.description);
       setStatus(task.status);
+      setSelectedTags(task.tags || []);
     }
   }, [task]);
 
@@ -47,11 +53,27 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
         ...task,
         title: title.trim(),
         description: description.trim(),
-        status
+        status,
+        tags: selectedTags.length > 0 ? selectedTags : undefined
       });
       
       onOpenChange(false);
       toast.success('Task updated successfully');
+    }
+  };
+
+  const toggleTag = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  const handleDelete = () => {
+    if (task) {
+      onOpenChange(false);
+      toast.success('Task deleted successfully');
     }
   };
 
@@ -93,20 +115,53 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todo">To Do</SelectItem>
-                <SelectItem value="doing">Doing</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
+                <SelectItem value="doing">In Progress</SelectItem>
+                <SelectItem value="done">Completed</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="space-y-2">
+            <Label>Tags (optional)</Label>
+            <div className="flex flex-wrap gap-2">
+              {TAGS.map(tag => (
+                <Badge 
+                  key={tag} 
+                  variant={selectedTags.includes(tag) ? "default" : "outline"}
+                  className={cn(
+                    "cursor-pointer", 
+                    selectedTags.includes(tag) ? (
+                      tag === 'Design' ? "bg-pink-100 text-pink-800" : 
+                      tag === 'UI/UX' ? "bg-purple-100 text-purple-800" : 
+                      tag === 'Dev' ? "bg-green-100 text-green-800" : 
+                      "bg-yellow-100 text-yellow-800"
+                    ) : ""
+                  )}
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-between pt-2">
             <Button 
               type="button" 
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={handleDelete}
             >
-              Cancel
+              Delete
             </Button>
-            <Button type="submit">Update Task</Button>
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Update</Button>
+            </div>
           </div>
         </form>
       </DialogContent>

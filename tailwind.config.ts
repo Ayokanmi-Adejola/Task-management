@@ -64,11 +64,29 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				kanban: {
-					'column-bg': '#f7f7f7',
+					'column-bg': '#f9fafb',
 					'todo': '#f7f7f7',
-					'doing': '#f7f7f7', 
-					'done': '#f7f7f7',
+					'doing': '#f5f8ff', 
+					'done': '#f5fff7',
 					'task': '#ffffff',
+				},
+				tag: {
+					'design': {
+						bg: '#ffebf1',
+						text: '#e11d48'
+					},
+					'ui': {
+						bg: '#f0ebff',
+						text: '#7e22ce'
+					},
+					'dev': {
+						bg: '#ebfff0',
+						text: '#16a34a'
+					},
+					'testing': {
+						bg: '#fff7eb',
+						text: '#ea580c'
+					}
 				}
 			},
 			borderRadius: {
