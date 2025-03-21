@@ -42,7 +42,7 @@ const Index = () => {
             <div className="bg-primary p-1.5 rounded text-white">
               <FileText className="h-5 w-5" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">Task Kanban</h1>
+            <h1 className="text-xl font-bold tracking-tight">Task Management</h1>
           </div>
           
           <div className="flex-1 max-w-md mx-6">
@@ -138,7 +138,7 @@ const Index = () => {
       <footer className="mt-auto border-t border-border/70 py-4 px-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
-            Designed with simplicity in mind
+          © 2025 by {'AYOKANMI ADEJOLA'}
           </div>
           <div className="text-sm">
             {!isAuthenticated && (
